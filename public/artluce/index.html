@@ -42,7 +42,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 @media (orientation:portrait) and (max-width:900px){.hint{display:block}.scrollcue{display:none}}
 @media (prefers-reduced-motion:reduce){.scrollcue i{animation:none}}
 .hud{left:auto;transform:none;right:calc(18px + env(safe-area-inset-right,0px));bottom:auto;top:calc(16px + env(safe-area-inset-top,0px));opacity:.35;transition:opacity .3s}
-.hud:hover,.hud:focus-within{opacity:1}
+.hud:hover,.hud:focus-within{opacity:1}.hud .sect{display:flex;align-items:center;gap:10px;height:40px;padding:0 14px 0 12px;border:0;border-radius:999px;background:transparent;color:var(--paper);font:700 14px "Metropolis Bold",Arial,sans-serif;cursor:pointer;white-space:nowrap;max-width:46vw;overflow:hidden;text-overflow:ellipsis;width:auto}.hud .sect b{color:var(--orange);font-variant-numeric:tabular-nums}.hud .sect:hover{background:rgba(255,255,255,.1);color:var(--paper)}.hud .sect svg{flex:0 0 auto;opacity:.7}.hud .home{font-size:16px}.toc{position:fixed;z-index:30;top:calc(70px + env(safe-area-inset-top,0px));right:calc(18px + env(safe-area-inset-right,0px));width:min(340px,calc(100vw - 36px));max-height:calc(100vh - 100px);overflow:auto;background:rgba(28,26,24,.94);backdrop-filter:blur(10px);border-radius:18px;padding:10px;color:var(--paper);font:400 15px "Metropolis",Arial,sans-serif;opacity:0;transform:translateY(-8px);pointer-events:none;transition:opacity .2s,transform .2s;box-shadow:0 20px 50px rgba(0,0,0,.35)}.toc.open{opacity:1;transform:none;pointer-events:auto}.toc p{margin:6px 12px 8px;font:700 11px "Metropolis Bold",Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:rgba(247,243,237,.55)}.toc button{display:flex;align-items:center;gap:14px;width:100%;padding:10px 12px;border:0;border-radius:10px;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}.toc button b{font:700 13px "Metropolis Bold",Arial,sans-serif;color:var(--orange);min-width:22px;font-variant-numeric:tabular-nums}.toc button:hover{background:rgba(255,255,255,.08)}.toc button[aria-current="true"]{background:var(--orange);color:var(--ink)}.toc button[aria-current="true"] b{color:var(--ink)}.hud.toc-open{opacity:1}
 .scrollcue{right:auto;left:calc(22px + env(safe-area-inset-left,0px));transition:opacity .5s}
 .beam{will-change:transform,opacity}
 </style>
@@ -258,9 +258,10 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 </div>
 <nav class="hud" aria-label="Navigazione">
   <button type="button" id="prev" aria-label="Passo precedente">‹</button>
-  <span class="count" id="count" aria-live="polite">01 / 13</span>
+  <button type="button" class="sect" id="sect" aria-haspopup="true" aria-expanded="false" aria-controls="toc" aria-label="Indice delle sezioni"><b id="count">01</b><span id="sectname">Copertina</span><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2"/></svg></button><button type="button" class="home" id="home" aria-label="Torna all’inizio" title="Torna all’inizio">⤒</button>
   <button type="button" id="next" aria-label="Passo successivo">›</button>
 </nav>
+<div class="toc" id="toc" role="menu" aria-label="Sezioni"><p>Vai alla sezione</p></div>
 <div class="scrollcue" aria-hidden="true">Scorri <i></i></div>
 
 <script>/*!
@@ -461,7 +462,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
   var bar=document.querySelector('.bar'), countEl=document.getElementById('count'), cue=document.querySelector('.scrollcue');
   function ui(){
     var s=beats[idx].slide;
-    countEl.textContent=String(s+1).padStart(2,'0')+' / '+String(N).padStart(2,'0');
+    countEl.textContent=String(s+1).padStart(2,'0');if(window.__sect){__sect(s)}
     bar.style.transform='scaleX('+(idx/(beats.length-1))+')';
     cue.style.opacity=idx===0?1:0;
   }
@@ -486,6 +487,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
   // rotella e trackpad: un gesto = un passo, l’inerzia viene ignorata
   var last=0, lastAbs=0, acc=0;
   window.addEventListener('wheel',function(e){
+    if(toc.classList.contains('open')&&toc.contains(e.target))return;
     e.preventDefault();
     var now=performance.now(), d=e.deltaY||e.deltaX, a=Math.abs(d);
     var fresh=(now-last>240)||(a>lastAbs*1.8+6&&now-last>60);
@@ -496,7 +498,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
   },{passive:false});
   // tocco
   var ty=null,tx=null;
-  window.addEventListener('touchstart',function(e){ty=e.touches[0].clientY;tx=e.touches[0].clientX},{passive:true});
+  window.addEventListener('touchstart',function(e){if(toc.contains(e.target)){ty=null;return}ty=e.touches[0].clientY;tx=e.touches[0].clientX},{passive:true});
   window.addEventListener('touchend',function(e){
     if(ty===null)return;var dy=ty-e.changedTouches[0].clientY, dx=tx-e.changedTouches[0].clientX;ty=null;
     var m=Math.abs(dy)>Math.abs(dx)?dy:dx;
@@ -506,7 +508,44 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
   window.addEventListener('keydown',function(e){
     if(['ArrowRight','ArrowDown','PageDown',' ','Enter'].indexOf(e.key)>-1){e.preventDefault();go(1)}
     if(['ArrowLeft','ArrowUp','PageUp','Backspace'].indexOf(e.key)>-1){e.preventDefault();go(-1)}
+    if(e.key==='Home'){e.preventDefault();jump(0)}
+    if(e.key==='End'){e.preventDefault();jump(N-1)}
+    if(e.key==='Escape'){openToc(false)}
   });
+
+  // ---------- indice delle sezioni e ritorno all'inizio ----------
+  var names=slides.map(function(sl,i){
+    var foot=null;kids(sl).forEach(function(c){if(isFooter(c))foot=c});
+    var t='';
+    if(foot){var ps=foot.querySelectorAll('p');t=(ps[ps.length-1]||foot).textContent}
+    t=t.replace(/\s*[·•|-]\s*\d+\s*$/,'').trim();
+    if(!t)t=i===0?'Copertina':(i===N-1?'Contatti':'Sezione '+(i+1));
+    return t;
+  });
+  var sectBtn=document.getElementById('sect'), sectName=document.getElementById('sectname'), toc=document.getElementById('toc'), hud=document.querySelector('.hud');
+  var tocBtns=names.map(function(n,i){
+    var b=document.createElement('button');b.type='button';b.setAttribute('role','menuitem');
+    b.innerHTML='<b>'+String(i+1).padStart(2,'0')+'</b><span></span>';b.lastChild.textContent=n;
+    b.addEventListener('click',function(){jump(i);openToc(false)});
+    toc.appendChild(b);return b;
+  });
+  function openToc(on){toc.classList.toggle('open',on);hud.classList.toggle('toc-open',on);sectBtn.setAttribute('aria-expanded',String(on))}
+  sectBtn.addEventListener('click',function(e){e.stopPropagation();openToc(!toc.classList.contains('open'))});
+  document.addEventListener('click',function(e){if(!toc.contains(e.target)&&e.target!==sectBtn)openToc(false)});
+  document.getElementById('home').addEventListener('click',function(){openToc(false);jump(0)});
+  // salta a una sezione: dissolvenza, poi la sezione appare già completa
+  function jump(s){
+    var target=0;
+    if(s>0){for(var k=beats.length-1;k>=0;k--){if(beats[k].slide===s){target=k;break}}}
+    if(target===idx)return;
+    busy=true;queued=0;lightsOn(false);
+    gsap.to(canvas,{opacity:0,duration:.25,ease:'power1.in',onComplete:function(){
+      gsap.killTweensOf(tl);idx=target;tl.seek(beats[target].label,false);ui();
+      gsap.to(canvas,{opacity:1,duration:.35,ease:'power1.out',onComplete:function(){busy=false;lightsCheck()}});
+    }});
+  }
+  window.__sect=function(s){sectName.textContent=names[s];tocBtns.forEach(function(b,i){b.setAttribute('aria-current',String(i===s))})};
+  ui();
   document.getElementById('next').addEventListener('click',function(){go(1)});
   document.getElementById('prev').addEventListener('click',function(){go(-1)});
 })();
