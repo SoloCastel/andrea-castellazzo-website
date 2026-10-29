@@ -810,4 +810,19 @@ html.m .mtoc.open{opacity:1;transform:none;pointer-events:auto}
   }
   window.addEventListener('scroll',onScroll,{passive:true});onScroll();
 })();
+// PDF: nella pagina claude.ai il download passa dalla capacità "downloads"; sul sito resta un link normale
+(function(){
+  if(!window.claude||!window.claude.use)return;
+  var dlp=window.claude.use('downloads');
+  document.addEventListener('click',function(e){
+    var a=e.target.closest&&e.target.closest('a[download]');if(!a)return;
+    e.preventDefault();
+    dlp.then(function(dl){
+      if(!dl)return;
+      return fetch(a.getAttribute('href')).then(function(r){return r.blob()}).then(function(b){
+        return dl.save({filename:'artluce-presentazione-mobile.pdf',data:b});
+      });
+    }).catch(function(){});
+  });
+})();
 </script>
