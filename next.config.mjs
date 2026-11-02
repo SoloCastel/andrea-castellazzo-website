@@ -10,6 +10,14 @@ const nextConfig = {
       { source: "/artluce/:deck(service|noleggio|matrimoni)/", destination: "/artluce/:deck/index.html" },
     ];
   },
+  // Pagine Artluce visibili solo a chi ha il link: fuori da motori di ricerca e anteprime in cache
+  async headers() {
+    const noindex = [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }];
+    return [
+      { source: "/artluce", headers: noindex },
+      { source: "/artluce/:path*", headers: noindex },
+    ];
+  },
 };
 
 export default nextConfig;
